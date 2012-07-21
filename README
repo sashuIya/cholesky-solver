@@ -2,7 +2,7 @@ This program is solver for symmetric linear systems. Can be used to obtain answe
 It's based on block Cholesky decomposition. 
 
 To accelerate program it was made some features:
-1. block format of matrix to maximize cache useing.
+1. block format of matrix to maximize cache using.
 Thus the matrix
 a11 a12 ... a1n
 a21 a22 ... a2n
@@ -15,6 +15,7 @@ A21 A22 ... A2m
 ...
 Am1 Am2 ... Amm
 where each block Aij is matrix with (block_size, block_size) sizes.
+Some docs about block algorithm can be found in folder 'doc'.
 
 2. unrolled loops by 8 elements.
 
