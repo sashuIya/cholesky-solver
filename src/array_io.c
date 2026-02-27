@@ -7,7 +7,7 @@
 
 #include "matrix_utils.h"
 
-int fill_matrix(int n, double* matrix, double* vector_answer, double* rhs) {
+int fill_matrix(int n, double* matrix, const double* vector_answer, double* rhs) {
   int i, j;
 
   for (i = 0; i < n; ++i) rhs[i] = 0;
@@ -36,8 +36,8 @@ int stupid_fill_matrix(int n, double* matrix) {
   return 0;
 }
 
-int read_matrix(int matrix_size, double** p_a, double* vector_answer, double* rhs,
-                char* input_file_name) {
+int read_matrix(int matrix_size, double** p_a, const double* vector_answer, double* rhs,
+                const char* input_file_name) {
   int i, j;
   FILE* input_file;
   double* matrix;
@@ -76,7 +76,7 @@ int read_matrix(int matrix_size, double** p_a, double* vector_answer, double* rh
   return 0;
 }
 
-int stupid_read_matrix(int matrix_size, double** p_a, char* input_file_name) {
+int stupid_read_matrix(int matrix_size, double** p_a, const char* input_file_name) {
   int i, j;
   FILE* input_file;
   double* matrix;
@@ -100,7 +100,7 @@ int stupid_read_matrix(int matrix_size, double** p_a, char* input_file_name) {
   return 0;
 }
 
-void printf_matrix(int n, double* matrix) {
+void printf_matrix(int n, const double* matrix) {
   int i, j;
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++)
@@ -113,7 +113,7 @@ void printf_matrix(int n, double* matrix) {
   }
 }
 
-void stupid_printf_matrix(int n, double* matrix) {
+void stupid_printf_matrix(int n, const double* matrix) {
   int i, j;
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++) printf("%.3lf ", matrix[n * i + j]);

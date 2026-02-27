@@ -9,8 +9,8 @@
 
 const double EPS = 1e-16;
 
-static __inline__ void cpy_matrix_block_to_block(double* a, int row, int column, int matrix_size,
-                                                 int n, int m, double* b) {
+static __inline__ void cpy_matrix_block_to_block(const double* a, int row, int column,
+                                                 int matrix_size, int n, int m, double* b) {
   int i, j;
 
   memset(b, 0, n * m * sizeof(double));
@@ -23,7 +23,7 @@ static __inline__ void cpy_matrix_block_to_block(double* a, int row, int column,
 }
 
 static __inline__ void cpy_block_to_matrix_block(double* a, int row, int column, int matrix_size,
-                                                 int n, int m, double* b) {
+                                                 int n, int m, const double* b) {
   int i, j;
 
   for (i = row; i < row + n; i++) {
@@ -33,19 +33,19 @@ static __inline__ void cpy_block_to_matrix_block(double* a, int row, int column,
   }
 }
 
-inline void main_blocks_diagonal_multiply(int n, int m, int l, double* a, double* b, double* d,
-                                          double* c) {
+static inline void main_blocks_diagonal_multiply(int n, int m, int l, const double* a,
+                                                 const double* b, const double* d, double* c) {
   int i, j, k;
-  double *pa, *pb, *pc, pd, ta;
+  const double *pa, *pb;
 
   pa = a;
   pb = b;
   for (k = 0; k < n; ++k) {
-    pd = d[k];
+    double pd = d[k];
 
-    pc = c;
     for (i = 0; i < m; ++i) {
-      ta = pa[i] * pd;
+      double ta = pa[i] * pd;
+      double* pc = c + (size_t)i * l;
 
       for (j = 0; j < l - 7; j += 8) {
         pc[j] -= pb[j] * ta;
@@ -61,8 +61,6 @@ inline void main_blocks_diagonal_multiply(int n, int m, int l, double* a, double
       for (; j < l; ++j) {
         pc[j] -= pb[j] * ta;
       }
-
-      pc += l;
     }
 
     pa += m;
@@ -70,18 +68,19 @@ inline void main_blocks_diagonal_multiply(int n, int m, int l, double* a, double
   }
 }
 
-inline void main_blocks_multiply(int n, int m, int l, double* a, double* b, double* c) {
+static inline void main_blocks_multiply(int n, int m, int l, const double* a, const double* b,
+                                        double* c) {
   int i, j, k;
-  double *pa, *pb, *pc, ta;
+  const double *pa, *pb;
 
-  memset(c, 0, m * l * sizeof(double));
+  memset(c, 0, (size_t)m * l * sizeof(double));
 
   pa = a;
   pb = b;
   for (k = 0; k < n; ++k) {
-    pc = c;
     for (i = 0; i < m; ++i) {
-      ta = pa[i];
+      double ta = pa[i];
+      double* pc = c + (size_t)i * l;
 
       for (j = 0; j < l - 7; j += 8) {
         pc[j] += pb[j] * ta;
@@ -97,8 +96,6 @@ inline void main_blocks_multiply(int n, int m, int l, double* a, double* b, doub
       for (; j < l; ++j) {
         pc[j] += pb[j] * ta;
       }
-
-      pc += l;
     }
 
     pa += m;
@@ -106,10 +103,10 @@ inline void main_blocks_multiply(int n, int m, int l, double* a, double* b, doub
   }
 }
 
-void cpy_diagonal_block_to_block(double* a, int t, int matrix_size, int m, double* b) {
+static void cpy_diagonal_block_to_block(const double* a, int t, int matrix_size, int m, double* b) {
   int i, j;
 
-  memset(b, 0, m * m * sizeof(double));
+  memset(b, 0, (size_t)m * m * sizeof(double));
 
   for (i = t; i < t + m; i++) {
     for (j = i; j < t + m; j++) {
@@ -118,7 +115,7 @@ void cpy_diagonal_block_to_block(double* a, int t, int matrix_size, int m, doubl
   }
 }
 
-void cpy_block_to_diagonal_block(double* a, int t, int matrix_size, int m, double* b) {
+static void cpy_block_to_diagonal_block(double* a, int t, int matrix_size, int m, const double* b) {
   int i, j;
 
   for (i = t; i < t + m; i++) {
@@ -128,24 +125,24 @@ void cpy_block_to_diagonal_block(double* a, int t, int matrix_size, int m, doubl
   }
 }
 
-int inverse_upper_triangle_block_and_diagonal(int n, double* a, double* d, double* b) {
+static int inverse_upper_triangle_block_and_diagonal(int n, const double* a, const double* d,
+                                                     double* b) {
   int i, j, k;
-  double dt;
-  double *pa, *pbi, *pbj;
+  double *pbi;
 
-  memset(b, 0, n * n * sizeof(double));
+  memset(b, 0, (size_t)n * n * sizeof(double));
   for (i = 0; i < n; ++i) b[i * n + i] = d[i];
 
-  pbi = b + (n - 1) * n;
+  pbi = b + (size_t)(n - 1) * n;
   for (i = n - 1; i >= 0; --i) {
     if (fabs(a[i * n + i]) < EPS) return -1;
 
-    dt = 1.0 / a[i * n + i];
+    double dt = 1.0 / a[i * n + i];
 
     for (j = i; j < n; j++) pbi[j] *= dt;
 
-    pbj = b;
-    pa = a;
+    double* pbj = b;
+    const double* pa = a;
     for (j = 0; j < i; ++j) {
       for (k = i; k < n; ++k) {
         pbj[k] -= pbi[k] * pa[i];
@@ -161,15 +158,15 @@ int inverse_upper_triangle_block_and_diagonal(int n, double* a, double* d, doubl
   return 0;
 }
 
-int cholesky_for_block(int n, double* a, double* d) {
+static int cholesky_for_block(int n, double* a, double* d) {
   int i, j, k;
-  double *pai, *pak, dt;
+  double *pai;
 
   for (i = 0; i < n; ++i) d[i] = 1.0;
 
   pai = a;
   for (i = 0; i < n; ++i) {
-    pak = a;
+    double* pak = a;
     for (k = 0; k < i; ++k) {
       for (j = i; j < n; ++j) {
         pai[j] -= pak[i] * d[k] * pak[j];
@@ -187,8 +184,8 @@ int cholesky_for_block(int n, double* a, double* d) {
 
     if (fabs(pai[i]) < EPS) return -1;
 
-    dt = 1.0 / pai[i];
-    for (j = i + 1; j < n - 8; j += 8) {
+    double dt = 1.0 / pai[i];
+    for (j = i + 1; j < n - 7; j += 8) {
       pai[j] *= dt;
       pai[j + 1] *= dt;
       pai[j + 2] *= dt;
@@ -209,7 +206,8 @@ int cholesky_for_block(int n, double* a, double* d) {
   return 0;
 }
 
-int inverse_upper_triangle_block_and_diagonal_rhs(int n, double* a, double* d, double* rhs) {
+static int inverse_upper_triangle_block_and_diagonal_rhs(int n, const double* a, const double* d,
+                                                        double* rhs) {
   int i, j;
 
   for (i = 0; i < n; ++i) rhs[i] *= d[i];
@@ -227,7 +225,7 @@ int inverse_upper_triangle_block_and_diagonal_rhs(int n, double* a, double* d, d
   return 0;
 }
 
-int inverse_lower_triangle_block_rhs(int n, double* a, double* rhs) {
+static int inverse_lower_triangle_block_rhs(int n, const double* a, double* rhs) {
   int i, j;
 
   for (i = 0; i < n; ++i) {
@@ -243,9 +241,9 @@ int inverse_lower_triangle_block_rhs(int n, double* a, double* rhs) {
   return 0;
 }
 
-void matrix_block_vector_multiply(int n, int m, double* a, double* b, double* c) {
+static void matrix_block_vector_multiply(int n, int m, const double* a, const double* b, double* c) {
   int i, j;
-  double* pai;
+  const double* pai;
 
   pai = a;
   for (i = 0; i < n; i++) {
@@ -257,7 +255,8 @@ void matrix_block_vector_multiply(int n, int m, double* a, double* b, double* c)
   }
 }
 
-void matrix_block_transposed_vector_multiply(int n, int m, double* a, double* b, double* c) {
+static void matrix_block_transposed_vector_multiply(int n, int m, const double* a, const double* b,
+                                                   double* c) {
   int i, j;
 
   for (i = 0; i < m; i++) {
@@ -269,19 +268,16 @@ void matrix_block_transposed_vector_multiply(int n, int m, double* a, double* b,
 
 int cholesky(int matrix_size, double* matrix, double* diagonal, double* workspace, int block_size) {
   int i, j, k;
-  int pij_n, pij_m;
-  int pki_n, pki_m;
-  int pkj_n, pkj_m;
 
   double *ma, *mb, *mc;
   ma = workspace;
-  mb = ma + block_size * block_size;
-  mc = mb + block_size * block_size;
+  mb = ma + (size_t)block_size * block_size;
+  mc = mb + (size_t)block_size * block_size;
 
   for (i = 0; i < matrix_size; i += block_size) {
     for (j = i; j < matrix_size; j += block_size) {
-      pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
-      pij_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
+      int pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
+      int pij_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
 
       if (j != i)
         cpy_matrix_block_to_block(matrix, i, j, matrix_size, pij_n, pij_m, mc);
@@ -289,11 +285,11 @@ int cholesky(int matrix_size, double* matrix, double* diagonal, double* workspac
         cpy_diagonal_block_to_block(matrix, i, matrix_size, pij_n, mc);
 
       for (k = 0; k < i; k += block_size) {
-        pki_n = (k + block_size < matrix_size ? block_size : matrix_size - k);
-        pki_m = (i + block_size < matrix_size ? block_size : matrix_size - i);
+        int pki_n = (k + block_size < matrix_size ? block_size : matrix_size - k);
+        int pki_m = (i + block_size < matrix_size ? block_size : matrix_size - i);
 
-        pkj_n = (k + block_size < matrix_size ? block_size : matrix_size - k);
-        pkj_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
+        int pkj_n = (k + block_size < matrix_size ? block_size : matrix_size - k);
+        int pkj_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
 
         cpy_matrix_block_to_block(matrix, k, i, matrix_size, pki_n, pki_m, ma);
         cpy_matrix_block_to_block(matrix, k, j, matrix_size, pkj_n, pkj_m, mb);
@@ -307,7 +303,7 @@ int cholesky(int matrix_size, double* matrix, double* diagonal, double* workspac
         cpy_block_to_diagonal_block(matrix, i, matrix_size, pij_n, mc);
     }
 
-    pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
+    int pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
 
     cpy_diagonal_block_to_block(matrix, i, matrix_size, pij_n, mb);
 
@@ -318,34 +314,34 @@ int cholesky(int matrix_size, double* matrix, double* diagonal, double* workspac
     if (inverse_upper_triangle_block_and_diagonal(pij_n, mb, diagonal + i, ma)) return -1;
 
     for (j = i + block_size; j < matrix_size; j += block_size) {
-      pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
-      pij_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
+      int cur_pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
+      int cur_pij_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
 
-      cpy_matrix_block_to_block(matrix, i, j, matrix_size, pij_n, pij_m, mb);
-      main_blocks_multiply(pij_n, pij_n, pij_m, ma, mb, mc);
-      cpy_block_to_matrix_block(matrix, i, j, matrix_size, pij_n, pij_m, mc);
+      cpy_matrix_block_to_block(matrix, i, j, matrix_size, cur_pij_n, cur_pij_m, mb);
+      main_blocks_multiply(cur_pij_n, cur_pij_n, cur_pij_m, ma, mb, mc);
+      cpy_block_to_matrix_block(matrix, i, j, matrix_size, cur_pij_n, cur_pij_m, mc);
     }
   }
 
   return 0;
 }
 
-int solve_lower_triangle_matrix_system(int matrix_size, double* matrix, double* rhs,
+int solve_lower_triangle_matrix_system(int matrix_size, const double* matrix, double* rhs,
                                        double* workspace, int block_size) {
-  int i, j, pii_n, pij_n, pij_m;
+  int i, j;
   double* ma;
   ma = workspace;
 
   for (i = 0; i < matrix_size; i += block_size) {
-    pii_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
+    int pii_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
 
     cpy_diagonal_block_to_block(matrix, i, matrix_size, pii_n, ma);
 
     if (inverse_lower_triangle_block_rhs(pii_n, ma, rhs + i)) return -1;
 
     for (j = i + block_size; j < matrix_size; j += block_size) {
-      pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
-      pij_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
+      int pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
+      int pij_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
 
       cpy_matrix_block_to_block(matrix, i, j, matrix_size, pij_n, pij_m, ma);
 
@@ -356,9 +352,10 @@ int solve_lower_triangle_matrix_system(int matrix_size, double* matrix, double* 
   return 0;
 }
 
-int solve_upper_triangle_matrix_diagonal_system(int matrix_size, double* matrix, double* diagonal,
-                                                double* rhs, double* workspace, int block_size) {
-  int i, j, pii_n, pij_n, pij_m;
+int solve_upper_triangle_matrix_diagonal_system(int matrix_size, const double* matrix,
+                                                const double* diagonal, double* rhs,
+                                                double* workspace, int block_size) {
+  int i, j;
   int residue;
   double* ma;
 
@@ -369,15 +366,15 @@ int solve_upper_triangle_matrix_diagonal_system(int matrix_size, double* matrix,
 
   for (i = residue; i >= 0; i -= block_size) {
     for (j = residue; j > i; j -= block_size) {
-      pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
-      pij_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
+      int pij_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
+      int pij_m = (j + block_size < matrix_size ? block_size : matrix_size - j);
 
       cpy_matrix_block_to_block(matrix, i, j, matrix_size, pij_n, pij_m, ma);
 
       matrix_block_vector_multiply(pij_n, pij_m, ma, rhs + j, rhs + i);
     }
 
-    pii_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
+    int pii_n = (i + block_size < matrix_size ? block_size : matrix_size - i);
 
     cpy_diagonal_block_to_block(matrix, i, matrix_size, pii_n, ma);
 
