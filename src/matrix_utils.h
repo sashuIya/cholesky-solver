@@ -3,6 +3,13 @@
 
 #include <stddef.h>
 
+typedef struct {
+  int size;
+  int block_size;
+  double* data;
+  double* diagonal;
+} CholeskyMatrix;
+
 /**
  * Calculates the total number of elements in a symmetric matrix
  * stored in packed upper-triangular format.

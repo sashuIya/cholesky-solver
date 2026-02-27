@@ -7,20 +7,21 @@
 
 #include "matrix_utils.h"
 
-int fill_matrix(int n, double* matrix, const double* vector_answer, double* rhs) {
+int fill_matrix(CholeskyMatrix* matrix, const double* vector_answer, double* rhs) {
   int i, j;
+  int n = matrix->size;
 
   for (i = 0; i < n; ++i) rhs[i] = 0;
 
   for (i = 0; i < n; ++i) {
     for (j = 0; j < i; j++) {
-      rhs[i] += matrix[get_symmetric_index(j, i, n)] * vector_answer[j];
+      rhs[i] += matrix->data[get_symmetric_index(j, i, n)] * vector_answer[j];
     }
 
     for (j = i; j < n; j++) {
-      matrix[get_symmetric_index(i, j, n)] = fabs(n - j);
+      matrix->data[get_symmetric_index(i, j, n)] = fabs(n - j);
 
-      rhs[i] += matrix[get_symmetric_index(i, j, n)] * vector_answer[j];
+      rhs[i] += matrix->data[get_symmetric_index(i, j, n)] * vector_answer[j];
     }
   }
 
@@ -36,13 +37,12 @@ int stupid_fill_matrix(int n, double* matrix) {
   return 0;
 }
 
-int read_matrix(int matrix_size, double** p_a, const double* vector_answer, double* rhs,
+int read_matrix(CholeskyMatrix* matrix, const double* vector_answer, double* rhs,
                 const char* input_file_name) {
   int i, j;
+  int matrix_size = matrix->size;
   FILE* input_file;
-  double* matrix;
   double tmp;
-  matrix = (*p_a);
 
   input_file = fopen(input_file_name, "r");
   if (input_file == NULL) {
@@ -64,13 +64,13 @@ int read_matrix(int matrix_size, double** p_a, const double* vector_answer, doub
     }
 
     for (j = i; j < matrix_size; j++) {
-      if (fscanf(input_file, "%lf", matrix + get_symmetric_index(i, j, matrix_size)) != 1) {
+      if (fscanf(input_file, "%lf", matrix->data + get_symmetric_index(i, j, matrix_size)) != 1) {
         printf("Error: failed to read element at (%d, %d)\n", i, j);
         fclose(input_file);
         return -3;
       }
 
-      rhs[i] += matrix[get_symmetric_index(i, j, matrix_size)] * vector_answer[j];
+      rhs[i] += matrix->data[get_symmetric_index(i, j, matrix_size)] * vector_answer[j];
     }
   }
 
@@ -107,14 +107,15 @@ int stupid_read_matrix(int matrix_size, double** p_a, const char* input_file_nam
   return 0;
 }
 
-void printf_matrix(int n, const double* matrix) {
+void printf_matrix(const CholeskyMatrix* matrix) {
   int i, j;
+  int n = matrix->size;
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++)
       if (j >= i)
-        printf("%4.3lf ", matrix[get_symmetric_index(i, j, n)]);
+        printf("%4.3lf ", matrix->data[get_symmetric_index(i, j, n)]);
       else
-        printf("%4.3lf ", matrix[get_symmetric_index(j, i, n)]);
+        printf("%4.3lf ", matrix->data[get_symmetric_index(j, i, n)]);
 
     printf("\n");
   }
