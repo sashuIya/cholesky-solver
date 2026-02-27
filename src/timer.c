@@ -1,243 +1,90 @@
-/* Time and Timing Functions */
 #include "timer.h"
 
 #include <stdio.h>
-/* To measure time on different platforms, several timing functions are provided.
-   The specific function used depends on the available libraries.
-   If MEASURE_FULL_TIME is defined, wall-clock time is also measured. */
-#define MEASURE_FULL_TIME
-
-/* Select which function to use for CPU time measurement. */
-#define USE_getrusage
-// #define USE_times
-// #define USE_clock
-
-/* Select which function to use for wall-clock time measurement. */
-#define USE_gettimeofday
-
-#ifdef USE_getrusage
-#include <sys/resource.h>
-#include <sys/time.h>
-
-#ifdef __hpux
-#include <sys/syscall.h>
-#define getrusage(a, b) syscall(SYS_getrusage, a, b)
-#endif
-
-/* Returns CPU time in hundredths of a second.
-   This version measures user time (system time is not included). */
-static long int get_time(void) {
-  struct rusage buf;
-
-  getrusage(RUSAGE_SELF, &buf);
-  return buf.ru_utime.tv_sec * 100        // Full seconds converted to hundredths
-         + buf.ru_utime.tv_usec / 10000;  // Microseconds converted to hundredths
-}
-#endif /* USE_getrusage */
-
-#ifdef USE_times
-#include <sys/times.h>
 #include <time.h>
 
-/* Returns CPU time in hundredths of a second.
-   This version measures user time (system time is not included). */
-static long int get_time(void) {
-  struct tms buf;
-
-  times(&buf);
-
-  return buf.tms_utime / (CLK_TCK / 100);  // CPU ticks converted to hundredths
-}
-#endif /* USE_times */
-
-#ifdef USE_clock
-#include <time.h>
-
-/* Returns CPU time in hundredths of a second.
-   This version measures user time + system time. */
-static long int get_time(void) {
-  long int t;
-
-  t = (long int)clock();
-
-  return t / (CLOCKS_PER_SEC / 100);  // clock ticks converted to hundredths
-}
-#endif /* USE_clock */
-
-#ifdef USE_gettimeofday
-#include <sys/time.h>
-
-/* Returns wall-clock time in hundredths of a second. */
-static long int get_full_time(void) {
-  struct timeval buf;
-
-  gettimeofday(&buf, 0);
-  return buf.tv_sec * 100 + buf.tv_usec / 10000;
-}
-#endif /* USE_gettimeofday */
-
-typedef struct _timer_ {
+typedef struct {
   int tic;
   int sec;
   int min;
   int hour;
-} TIMER;
+} TimeComponents;
 
-/* Converts time in hundredths of a second to HH:MM:SS.CC format. */
-static void ConvertTime(long clocks, TIMER* t) {
-  t->hour = clocks / 360000L;
-  clocks %= 360000L;
-  t->min = clocks / 6000;
-  clocks %= 6000;
-  t->sec = clocks / 100;
-  t->tic = clocks % 100;
+static struct timespec start_ts;
+static struct timespec prev_ts;
+static int timer_active = 0;
+
+static double get_elapsed_seconds(struct timespec start, struct timespec end) {
+  return (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 }
 
-static int TimerStarted;    // 1 if timer is active
-static long int StartTime;  // Start CPU time
-static long int PrevTime;   // CPU time at previous call to get_time
+static void format_time(double total_seconds, TimeComponents* tc) {
+  long total_cents = (long)(total_seconds * 100);
+  tc->hour = total_cents / 360000L;
+  total_cents %= 360000L;
+  tc->min = total_cents / 6000;
+  total_cents %= 6000;
+  tc->sec = total_cents / 100;
+  tc->tic = total_cents % 100;
+}
 
-#ifdef MEASURE_FULL_TIME
-static long int StartFullTime;  // Start wall-clock time
-static long int PrevFullTime;   // Wall-clock time at previous call to get_time
-#endif                          /* MEASURE_FULL_TIME */
-
-/* Starts the timer. */
 void timer_start(void) {
-  TimerStarted = 1;
-  StartTime = PrevTime = get_time();
-#ifdef MEASURE_FULL_TIME
-  StartFullTime = PrevFullTime = get_full_time();
-#endif /* MEASURE_FULL_TIME */
+  clock_gettime(CLOCK_MONOTONIC, &start_ts);
+  prev_ts = start_ts;
+  timer_active = 1;
 }
 
-/* Prints CPU time elapsed since start and since previous call. */
 void print_time(const char* message) {
-  long t;
-  TIMER summ, stage;
+  struct timespec current_ts;
+  clock_gettime(CLOCK_MONOTONIC, &current_ts);
 
-  t = get_time();
-
-  if (TimerStarted) {
-    ConvertTime(t - StartTime, &summ);
-    ConvertTime(t - PrevTime, &stage);
-    printf("Time: total=%2.2d:%2.2d:%2.2d.%2.2d, %s=%2.2d:%2.2d:%2.2d.%2.2d\n", summ.hour, summ.min,
-           summ.sec, summ.tic, message, stage.hour, stage.min, stage.sec, stage.tic);
-    PrevTime = t;
-  } else {
-    TimerStarted = 1;
-    StartTime = PrevTime = t;
+  if (!timer_active) {
+    timer_start();
+    return;
   }
+
+  TimeComponents total_tc, stage_tc;
+  format_time(get_elapsed_seconds(start_ts, current_ts), &total_tc);
+  format_time(get_elapsed_seconds(prev_ts, current_ts), &stage_tc);
+
+  printf("Time: total=%2.2d:%2.2d:%2.2d.%2.2d, %s=%2.2d:%2.2d:%2.2d.%2.2d\n", total_tc.hour,
+         total_tc.min, total_tc.sec, total_tc.tic, message, stage_tc.hour, stage_tc.min,
+         stage_tc.sec, stage_tc.tic);
+
+  prev_ts = current_ts;
 }
 
-/* Prints both CPU and wall-clock time elapsed. */
-void print_full_time(const char* message) {
-  long t;
-  TIMER summ, stage;
-
-#ifdef MEASURE_FULL_TIME
-  TIMER summ_full, stage_full;
-  long t_full = get_full_time();
-#endif /* MEASURE_FULL_TIME */
-
-  t = get_time();
-
-  if (TimerStarted) {
-    ConvertTime(t - StartTime, &summ);
-    ConvertTime(t - PrevTime, &stage);
-#ifdef MEASURE_FULL_TIME
-    ConvertTime(t_full - StartFullTime, &summ_full);
-    ConvertTime(t_full - PrevFullTime, &stage_full);
-#endif /* MEASURE_FULL_TIME */
-#ifdef MEASURE_FULL_TIME
-    printf(
-        "Time: total=%2.2d:%2.2d:%2.2d.%2.2d (%2.2d:%2.2d:%2.2d.%2.2d), %s=%2.2d:%2.2d:%2.2d.%2.2d "
-        "(%2.2d:%2.2d:%2.2d.%2.2d)\n",
-        summ.hour, summ.min, summ.sec, summ.tic, summ_full.hour, summ_full.min, summ_full.sec,
-        summ_full.tic, message, stage.hour, stage.min, stage.sec, stage.tic, stage_full.hour,
-        stage_full.min, stage_full.sec, stage_full.tic);
-    PrevFullTime = t_full;
-#else
-    printf("Time: total=%2.2d:%2.2d:%2.2d.%2.2d, %s=%2.2d:%2.2d:%2.2d.%2.2d\n", summ.hour, summ.min,
-           summ.sec, summ.tic, message, stage.hour, stage.min, stage.sec, stage.tic);
-#endif /* MEASURE_FULL_TIME */
-    PrevTime = t;
-  } else {
-    TimerStarted = 1;
-    StartTime = PrevTime = t;
-#ifdef MEASURE_FULL_TIME
-    StartFullTime = PrevFullTime = t_full;
-#endif /* MEASURE_FULL_TIME */
-  }
-}
-
-/* Starts the timer. */
-void TimerStart(void) {
-  timer_start();
-}
-
-/* Prints CPU time and returns time elapsed since previous call. */
-long PrintTime(const char* message) {
-  long t;
-  TIMER summ, stage;
-  long res;
-
-  t = get_time();
-
-  if (TimerStarted) {
-    ConvertTime(t - StartTime, &summ);
-    ConvertTime(res = t - PrevTime, &stage);
-    printf("Time: total=%2.2d:%2.2d:%2.2d.%2.2d, %s=%2.2d:%2.2d:%2.2d.%2.2d\n", summ.hour, summ.min,
-           summ.sec, summ.tic, message, stage.hour, stage.min, stage.sec, stage.tic);
-    PrevTime = t;
-  } else {
-    TimerStarted = 1;
-    StartTime = PrevTime = t;
-    res = 0;
-  }
-  return res;
-}
-
-/* Formats current total elapsed time into buffer. */
-void sprint_time(char* buffer) {
-  long t;
-  TIMER summ;
-
-  t = get_time();
-
-  if (TimerStarted) {
-    ConvertTime(t - StartTime, &summ);
-    sprintf(buffer, "%2.2d:%2.2d:%2.2d.%2.2d", summ.hour, summ.min, summ.sec, summ.tic);
-  } else {
-    TimerStarted = 1;
-    StartTime = PrevTime = t;
-  }
-}
-
-/* Prints CPU time and returns total elapsed time. */
-long int PrintTimeT(const char* message, long int* pTotalTime) {
-  long t;
-  TIMER summ, stage;
-  long res;
-
-  t = get_time();
-
-  if (TimerStarted) {
-    ConvertTime(t - StartTime, &summ);
-    ConvertTime(res = t - PrevTime, &stage);
-    printf("Time: total=%2.2d:%2.2d:%2.2d.%2.2d, %s=%2.2d:%2.2d:%2.2d.%2.2d\n", summ.hour, summ.min,
-           summ.sec, summ.tic, message, stage.hour, stage.min, stage.sec, stage.tic);
-    PrevTime = t;
-    *pTotalTime = t - StartTime;
-  } else {
-    TimerStarted = 1;
-    StartTime = PrevTime = t;
-    res = 0;
-  }
-  return res;
-}
-
-/* Returns CPU time since start. */
+/* Maintain legacy API for compatibility */
+void print_full_time(const char* message) { print_time(message); }
+void TimerStart(void) { timer_start(); }
 long TimerGet(void) {
-  return get_time();
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (long)(ts.tv_sec * 100 + ts.tv_nsec / 10000000);
+}
+
+long PrintTime(const char* message) {
+  struct timespec current_ts;
+  clock_gettime(CLOCK_MONOTONIC, &current_ts);
+  double stage_sec = get_elapsed_seconds(prev_ts, current_ts);
+  print_time(message);
+  return (long)(stage_sec * 100);
+}
+
+void sprint_time(char* buffer) {
+  struct timespec current_ts;
+  clock_gettime(CLOCK_MONOTONIC, &current_ts);
+  TimeComponents tc;
+  format_time(get_elapsed_seconds(start_ts, current_ts), &tc);
+  sprintf(buffer, "%2.2d:%2.2d:%2.2d.%2.2d", tc.hour, tc.min, tc.sec, tc.tic);
+}
+
+long int PrintTimeT(const char* message, long int* pTotalTime) {
+  struct timespec current_ts;
+  clock_gettime(CLOCK_MONOTONIC, &current_ts);
+  double total_sec = get_elapsed_seconds(start_ts, current_ts);
+  double stage_sec = get_elapsed_seconds(prev_ts, current_ts);
+  print_time(message);
+  *pTotalTime = (long)(total_sec * 100);
+  return (long)(stage_sec * 100);
 }
