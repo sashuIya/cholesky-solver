@@ -1,0 +1,23 @@
+Building project...
+rm -rf /home/alapin/Coding/cholesky-solver/src/../build
+gcc -c -Wall -O3 main.c -o /home/alapin/Coding/cholesky-solver/src/../build/main.o
+gcc -c -Wall -O3 array_op.c -o /home/alapin/Coding/cholesky-solver/src/../build/array_op.o
+gcc -c -Wall -O3 timer.c -o /home/alapin/Coding/cholesky-solver/src/../build/timer.o
+gcc -c -Wall -O3 array_io.c -o /home/alapin/Coding/cholesky-solver/src/../build/array_io.o
+gcc -lm /home/alapin/Coding/cholesky-solver/src/../build/main.o /home/alapin/Coding/cholesky-solver/src/../build/array_op.o /home/alapin/Coding/cholesky-solver/src/../build/timer.o /home/alapin/Coding/cholesky-solver/src/../build/array_io.o -o /home/alapin/Coding/cholesky-solver/src/../build/cholesky_solver
+Running benchmarks...
+--------------------------------------------------------------------------------
+Matrix Size  | Block Size   | Time (Total)    | Residual    
+--------------------------------------------------------------------------------
+1000         | 64           | 00:00:00.05     | 2.80569e-09 
+1000         | 128          | 00:00:00.06     | 3.02315e-09 
+2000         | 64           | 00:00:00.42     | 5.75034e-08 
+2000         | 128          | 00:00:00.46     | 7.08766e-08 
+3000         | 64           | 00:00:01.47     | 2.68498e-07 
+3000         | 128          | 00:00:01.52     | 3.95936e-07 
+4000         | 64           | 00:00:03.57     | 2.76418e-07 
+4000         | 128          | 00:00:03.50     | 4.40554e-07 
+5000         | 64           | 00:00:07.06     | 5.93182e-07 
+5000         | 128          | 00:00:06.82     | 1.52649e-06 
+--------------------------------------------------------------------------------
+Benchmarks completed.

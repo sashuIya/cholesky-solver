@@ -51,10 +51,20 @@ def parse_result_file(filename):
     results = {}
     with open(filename, 'r') as f:
         for line in f:
+            # Try new format first: 5000     | 128    |      6.17s | 1.52649e-06
             match = re.search(r'(\d+)\s+\|\s+(\d+)\s+\|\s+([\d\.]+)s\s+\|\s+([eE\d\.-]+)', line)
             if match:
                 n, m = match.group(1), match.group(2)
                 results[(n, m)] = (float(match.group(3)), match.group(4))
+                continue
+            
+            # Try old format: 5000         | 128          | 00:00:07.06     | 1.52649e-06
+            match = re.search(r'(\d+)\s+\|\s+(\d+)\s+\|\s+(\d{2}):(\d{2}):(\d{2})\.(\d{2})\s+\|\s+([eE\d\.-]+)', line)
+            if match:
+                n, m = match.group(1), match.group(2)
+                h, mins, s, c = map(int, match.groups()[2:6])
+                total_seconds = h * 3600 + mins * 60 + s + c / 100.0
+                results[(n, m)] = (total_seconds, match.group(7))
     return results
 
 def run_benchmarks(save=False):
