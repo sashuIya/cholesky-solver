@@ -55,7 +55,8 @@ int read_matrix(int matrix_size, double** p_a, const double* vector_answer, doub
   for (i = 0; i < matrix_size; i++) {
     for (j = 0; j < i; ++j) {
       if (fscanf(input_file, "%lf", &tmp) != 1) {
-        printf("Cannot read matrix\n");
+        printf("Error: failed to read element at (%d, %d)\n", i, j);
+        fclose(input_file);
         return -2;
       }
 
@@ -64,12 +65,18 @@ int read_matrix(int matrix_size, double** p_a, const double* vector_answer, doub
 
     for (j = i; j < matrix_size; j++) {
       if (fscanf(input_file, "%lf", matrix + get_symmetric_index(i, j, matrix_size)) != 1) {
-        printf("Cannot read matrix\n");
+        printf("Error: failed to read element at (%d, %d)\n", i, j);
+        fclose(input_file);
         return -3;
       }
 
       rhs[i] += matrix[get_symmetric_index(i, j, matrix_size)] * vector_answer[j];
     }
+  }
+
+  /* Check if there is extra data in the file */
+  if (fscanf(input_file, "%lf", &tmp) == 1) {
+    printf("Warning: extra data found at the end of input file\n");
   }
 
   fclose(input_file);

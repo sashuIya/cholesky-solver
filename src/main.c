@@ -27,11 +27,16 @@ int main(int argc, char* argv[]) {
 
   /* input: ./cholesky_solver n m [file] */
   if (argc == 3 || argc == 4) {
-    matrix_size = atoi(argv[1]);
-    block_size = atoi(argv[2]);
+    char* endptr;
+    matrix_size = (int)strtol(argv[1], &endptr, 10);
+    if (*endptr != '\0' || matrix_size <= 0) {
+      printf("Error: invalid matrix size '%s'\n", argv[1]);
+      return -1;
+    }
 
-    if (matrix_size <= 0 || block_size <= 0 || block_size > matrix_size) {
-      printf("Wrong input\n");
+    block_size = (int)strtol(argv[2], &endptr, 10);
+    if (*endptr != '\0' || block_size <= 0 || block_size > matrix_size) {
+      printf("Error: invalid block size '%s' (must be between 1 and %d)\n", argv[2], matrix_size);
       return -1;
     }
 
