@@ -9,6 +9,9 @@
 
 const double EPS = 1e-16;
 
+/**
+ * @brief Copies a block from the packed symmetric matrix to a dense square block.
+ */
 static __inline__ void cpy_matrix_block_to_block(const double* a, int row, int column,
                                                  int matrix_size, int n, int m, double* b) {
   int i, j;
@@ -22,6 +25,9 @@ static __inline__ void cpy_matrix_block_to_block(const double* a, int row, int c
   }
 }
 
+/**
+ * @brief Copies a dense square block back into the packed symmetric matrix.
+ */
 static __inline__ void cpy_block_to_matrix_block(double* a, int row, int column, int matrix_size,
                                                  int n, int m, const double* b) {
   int i, j;
@@ -33,6 +39,11 @@ static __inline__ void cpy_block_to_matrix_block(double* a, int row, int column,
   }
 }
 
+/**
+ * @brief Performs block multiplication with diagonal scaling: C = C - A^T * D * B.
+ * 
+ * Optimized with manual loop unrolling by 8 for high performance.
+ */
 static inline void main_blocks_diagonal_multiply(int n, int m, int l, const double* a,
                                                  const double* b, const double* d, double* c) {
   int i, j, k;
@@ -68,6 +79,11 @@ static inline void main_blocks_diagonal_multiply(int n, int m, int l, const doub
   }
 }
 
+/**
+ * @brief Performs standard block multiplication: C = A * B.
+ * 
+ * Optimized with manual loop unrolling by 8 for high performance.
+ */
 static inline void main_blocks_multiply(int n, int m, int l, const double* a, const double* b,
                                         double* c) {
   int i, j, k;
@@ -125,6 +141,9 @@ static void cpy_block_to_diagonal_block(double* a, int t, int matrix_size, int m
   }
 }
 
+/**
+ * @brief Inverts a triangular block with diagonal scaling.
+ */
 static int inverse_upper_triangle_block_and_diagonal(int n, const double* a, const double* d,
                                                      double* b) {
   int i, j, k;
@@ -158,6 +177,9 @@ static int inverse_upper_triangle_block_and_diagonal(int n, const double* a, con
   return 0;
 }
 
+/**
+ * @brief Performs standard Cholesky decomposition on a small dense block.
+ */
 static int cholesky_for_block(int n, double* a, double* d) {
   int i, j, k;
   double *pai;
