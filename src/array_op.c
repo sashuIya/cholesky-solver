@@ -4,66 +4,35 @@
 #include <math.h>
 
 #include "array_op.h"
+#include "matrix_utils.h"
 
 const double EPS = 1e-16;
 
 static __inline__ void cpy_matrix_block_to_block(double *a, int row, int column, int matrix_size, int n, int m, double *b)
 {
-    int i, j, k;
+    int i, j;
 
     memset(b, 0, n*m * sizeof(double));
 
-    k = ((row*((matrix_size << 1) - row + 1)) >> 1) + column - row;
-
     for (i = row; i < row+n; i++)
     {
-        for (j = 0; j < m-7; j += 8)
+        for (j = column; j < column + m; ++j)
         {
-            b[(i-row)*m + j] = a[k + j];
-            b[(i-row)*m + j+1] = a[k + j + 1];
-            b[(i-row)*m + j+2] = a[k + j + 2];
-            b[(i-row)*m + j+3] = a[k + j + 3];
-            b[(i-row)*m + j+4] = a[k + j + 4];
-            b[(i-row)*m + j+5] = a[k + j + 5];
-            b[(i-row)*m + j+6] = a[k + j + 6];
-            b[(i-row)*m + j+7] = a[k + j + 7];
+            b[(i-row)*m + (j-column)] = a[get_symmetric_index(i, j, matrix_size)];
         }
-
-        for (; j < m; ++j)
-        {
-            b[(i-row)*m + j] = a[k + j];
-        }
-
-        k += matrix_size-i-1;
     }
 }
 
 static __inline__ void cpy_block_to_matrix_block(double *a, int row, int column, int matrix_size, int n, int m, double *b)
 {
-    int i, j, k;
-
-    k = ((row*((matrix_size << 1) - row + 1)) >> 1) + column - row;
+    int i, j;
 
     for (i = row; i < row+n; i++)
     {
-        for (j = 0; j < m-7; j += 8)
+        for (j = column; j < column + m; ++j)
         {
-            a[k+j] = b[(i-row)*m + j];
-            a[k+j + 1] = b[(i-row)*m + j + 1];
-            a[k+j + 2] = b[(i-row)*m + j + 2];
-            a[k+j + 3] = b[(i-row)*m + j + 3];
-            a[k+j + 4] = b[(i-row)*m + j + 4];
-            a[k+j + 5] = b[(i-row)*m + j + 5];
-            a[k+j + 6] = b[(i-row)*m + j + 6];
-            a[k+j + 7] = b[(i-row)*m + j + 7];
+            a[get_symmetric_index(i, j, matrix_size)] = b[(i-row)*m + (j-column)];
         }
-
-        for (; j < m; ++j)
-        {
-            a[k+j] = b[(i-row)*m + j];
-        }
-
-        k += matrix_size-i-1;
     }
 }
 
@@ -152,37 +121,29 @@ inline void main_blocks_multiply(int n, int m, int l, double *a, double *b, doub
 
 void cpy_diagonal_block_to_block(double *a, int t, int matrix_size, int m, double *b)
 {
-    int i, j, k;
+    int i, j;
 
     memset(b, 0, m*m * sizeof(double));
 
-    k = ((t*((matrix_size << 1) - t + 1)) >> 1);
-
     for (i = t; i < t+m; i++)
     {
-        for (j = 0; j < m-(i-t); j++)
+        for (j = i; j < t+m; j++)
         {
-            b[(i-t)*m + i-t + j] = a[k + j];
+            b[(i-t)*m + j-t] = a[get_symmetric_index(i, j, matrix_size)];
         }
-
-        k += matrix_size-i;
     }
 }
 
 void cpy_block_to_diagonal_block(double *a, int t, int matrix_size, int m, double *b)
 {
-    int i, j, k;
-
-    k = ((t*((matrix_size << 1) - t + 1)) >> 1);
+    int i, j;
 
     for (i = t; i < t+m; i++)
     {
-        for (j = 0; j < m-(i-t); j++)
+        for (j = i; j < t+m; j++)
         {
-            a[k+j] = b[(i-t)*m + i-t + j]; 
+            a[get_symmetric_index(i, j, matrix_size)] = b[(i-t)*m + j-t]; 
         }
-
-        k += matrix_size-i;
     }
 }
 

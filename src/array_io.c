@@ -4,30 +4,27 @@
 #include <stdlib.h>
 
 #include "array_io.h"
+#include "matrix_utils.h"
 
 int fill_matrix(int n, double *matrix, double *vector_answer, double *rhs)
 {
-    int i, j, k, t;
+    int i, j;
 
     for (i = 0; i < n; ++i)
         rhs[i] = 0;
 
     for (i = 0; i < n; ++i)
     {
-        k = n*i - (i*(i-1))/2;
-
         for (j = 0; j < i; j++)
         {
-            t = n*j - (j*(j-1))/2;
-
-            rhs[i] += matrix[t + i-j] * vector_answer[j];
+            rhs[i] += matrix[get_symmetric_index(j, i, n)] * vector_answer[j];
         }
         
         for (j = i; j < n; j++)
         {
-            matrix[k + j-i] = fabs(n-j);
+            matrix[get_symmetric_index(i, j, n)] = fabs(n-j);
 
-            rhs[i] += matrix[k + j-i] * vector_answer[j];
+            rhs[i] += matrix[get_symmetric_index(i, j, n)] * vector_answer[j];
         }
     }
 
@@ -47,7 +44,7 @@ int stupid_fill_matrix(int n, double *matrix)
 
 int read_matrix(int matrix_size, double **p_a, double *vector_answer, double *rhs, char *input_file_name)
 {
-    int i, j, k;
+    int i, j;
     FILE *input_file;
     double *matrix;
     double tmp;
@@ -63,7 +60,6 @@ int read_matrix(int matrix_size, double **p_a, double *vector_answer, double *rh
     for (i = 0; i < matrix_size; ++i)
         rhs[i] = 0;
 
-    k = 0;
     for (i = 0; i < matrix_size; i++)
     {
         for (j = 0; j < i; ++j)
@@ -77,16 +73,15 @@ int read_matrix(int matrix_size, double **p_a, double *vector_answer, double *rh
             rhs[i] += tmp * vector_answer[j];
         }
 
-        k = i*matrix_size - (i*(i-1))/2;
         for (j = i; j < matrix_size; j++)
         {
-            if (fscanf(input_file, "%lf", matrix + k + j-i) != 1)
+            if (fscanf(input_file, "%lf", matrix + get_symmetric_index(i, j, matrix_size)) != 1)
             {
                 printf("Cannot read matrix\n");
                 return -3;
             }
 
-            rhs[i] += matrix[k + j-i] * vector_answer[j];
+            rhs[i] += matrix[get_symmetric_index(i, j, matrix_size)] * vector_answer[j];
         }
     }
 
@@ -131,9 +126,9 @@ void printf_matrix(int n, double *matrix)
 
         for (j = 0; j < n; j++)
             if (j >= i)
-                printf("%4.3lf ", matrix[n*i - (i*(i-1))/2 + j-i]);
+                printf("%4.3lf ", matrix[get_symmetric_index(i, j, n)]);
             else
-                printf("%4.3lf ", matrix[n*j - (j*(j-1))/2 + i-j]);
+                printf("%4.3lf ", matrix[get_symmetric_index(j, i, n)]);
 
         printf("\n");
     }

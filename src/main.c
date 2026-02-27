@@ -6,6 +6,7 @@
 #include "array_io.h"
 #include "array_op.h"
 #include "timer.h"
+#include "matrix_utils.h"
 
 
 int main(int argc, char *argv[])
@@ -39,7 +40,7 @@ int main(int argc, char *argv[])
         }
 
         /* Individual allocations for better safety and readability */
-        matrix = (double*)malloc(((size_t)matrix_size * (matrix_size + 1) / 2) * sizeof(double));
+        matrix = (double*)malloc(get_symmetric_matrix_size(matrix_size) * sizeof(double));
         diagonal = (double*)malloc(matrix_size * sizeof(double));
         vector_answer = (double*)malloc(matrix_size * sizeof(double));
         vector = (double*)malloc(matrix_size * sizeof(double));
@@ -54,7 +55,7 @@ int main(int argc, char *argv[])
             goto cleanup;
         }
 
-        memset(matrix, 0, ((size_t)matrix_size * (matrix_size + 1) / 2) * sizeof(double));
+        memset(matrix, 0, get_symmetric_matrix_size(matrix_size) * sizeof(double));
         memset(diagonal, 0, matrix_size * sizeof(double));
         memset(vector_answer, 0, matrix_size * sizeof(double));
         memset(vector, 0, matrix_size * sizeof(double));
