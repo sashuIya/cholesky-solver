@@ -9,7 +9,7 @@ BUILD_DIR=$(ROOT_DIR)/../build
 CC=gcc
 CFLAGS=-c -Wall -O3
 LDFLAGS=-lm
-SOURCES=main.c array_op.c timer.c array_io.c
+SOURCES=main.c solver_engine.c array_op.c timer.c array_io.c
 EXECUTABLE=cholesky_solver
 OBJS_NAMES=$(SOURCES:.c=.o)
 OBJS=$(patsubst %,$(BUILD_DIR)/%,$(OBJS_NAMES))

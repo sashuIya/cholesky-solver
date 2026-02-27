@@ -1,185 +1,59 @@
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#include "array_io.h"
-#include "array_op.h"
-#include "matrix_utils.h"
+#include "solver_engine.h"
 #include "timer.h"
 
 int main(int argc, char* argv[]) {
-  int matrix_size, block_size;
-  int i;
+  SolverConfig config = {0, 0, NULL};
+  SolverResults results = {0, 0, 0, NULL, 0};
   int return_code = 0;
-
-  CholeskyMatrix matrix = {0, 0, NULL, NULL};
-  double* vector_answer = NULL;
-  double* vector = NULL;
-  double* exact_rhs = NULL;
-  double* rhs = NULL;
-  double* workspace = NULL;
-
-  double residual, rhs_norm, answer_error;
 
   timer_start();
 
-  /* input: ./cholesky_solver n m [file] */
+  /* 1. Argument Parsing */
   if (argc == 3 || argc == 4) {
     char* endptr;
-    matrix_size = (int)strtol(argv[1], &endptr, 10);
-    if (*endptr != '\0' || matrix_size <= 0) {
+    config.matrix_size = (int)strtol(argv[1], &endptr, 10);
+    if (*endptr != '\0' || config.matrix_size <= 0) {
       printf("Error: invalid matrix size '%s'\n", argv[1]);
       return -1;
     }
 
-    block_size = (int)strtol(argv[2], &endptr, 10);
-    if (*endptr != '\0' || block_size <= 0 || block_size > matrix_size) {
-      printf("Error: invalid block size '%s' (must be between 1 and %d)\n", argv[2], matrix_size);
+    config.block_size = (int)strtol(argv[2], &endptr, 10);
+    if (*endptr != '\0' || config.block_size <= 0 || config.block_size > config.matrix_size) {
+      printf("Error: invalid block size '%s' (must be between 1 and %d)\n", argv[2],
+             config.matrix_size);
       return -1;
     }
 
-    matrix.size = matrix_size;
-    matrix.block_size = block_size;
-
-    /* Individual allocations for better safety and readability */
-    matrix.data = (double*)malloc(get_symmetric_matrix_size(matrix_size) * sizeof(double));
-    matrix.diagonal = (double*)malloc(matrix_size * sizeof(double));
-    vector_answer = (double*)malloc(matrix_size * sizeof(double));
-    vector = (double*)malloc(matrix_size * sizeof(double));
-    exact_rhs = (double*)malloc(matrix_size * sizeof(double));
-    rhs = (double*)malloc(matrix_size * sizeof(double));
-    workspace = (double*)malloc(3 * (size_t)block_size * block_size * sizeof(double));
-
-    if (!matrix.data || !matrix.diagonal || !vector_answer || !vector || !exact_rhs || !rhs ||
-        !workspace) {
-      printf("Not enough memory\n");
-      return_code = -2;
-      goto cleanup;
-    }
-
-    memset(matrix.data, 0, get_symmetric_matrix_size(matrix_size) * sizeof(double));
-    memset(matrix.diagonal, 0, matrix_size * sizeof(double));
-    memset(vector_answer, 0, matrix_size * sizeof(double));
-    memset(vector, 0, matrix_size * sizeof(double));
-    memset(exact_rhs, 0, matrix_size * sizeof(double));
-    memset(rhs, 0, matrix_size * sizeof(double));
-    memset(workspace, 0, 3 * (size_t)block_size * block_size * sizeof(double));
-
-    fill_vector_answer(matrix_size, vector_answer);
-
-    if (argc == 3) {
-      if (fill_matrix(&matrix, vector_answer, rhs)) {
-        printf("Cannot fill matrix\n");
-        return_code = -3;
-        goto cleanup;
-      }
-    }
-
     if (argc == 4) {
-      if (read_matrix(&matrix, vector_answer, rhs, argv[3])) {
-        printf("Cannot read matrix\n");
-        return_code = -4;
-        goto cleanup;
-      }
-    }
-
-    for (i = 0; i < matrix_size; i++) {
-      exact_rhs[i] = rhs[i];
-      vector[i] = rhs[i];
+      config.input_file = argv[3];
     }
   } else {
-    printf("Wrong input, try again\n");
+    printf("Usage: ./cholesky_solver (matrix_size) (block_size) [matrix_input_file]\n");
     return 0;
   }
 
-  print_time("on initialization");
+  /* 2. Run Solver Engine */
+  return_code = run_cholesky_solver(&config, &results);
 
-  if (matrix_size < 15) {
-    printf("matrix A:\n");
-    printf_matrix(&matrix);
-
-    printf("\nrhs:\n");
-    for (i = 0; i < matrix_size; ++i) printf("%.10f ", rhs[i]);
-    printf("\n\n");
-  }
-
-  if (cholesky(&matrix, workspace)) {
-    printf("Cannot apply Cholesky method for this matrix\n");
-    return_code = -10;
-    goto cleanup;
-  }
-
-  print_time("on cholesky decomposition");
-
-  if (solve_lower_triangle_matrix_system(&matrix, vector, workspace)) {
-    printf("Cannot solve R^T y = b part\n");
-    return_code = -11;
-    goto cleanup;
-  }
-
-  if (solve_upper_triangle_matrix_diagonal_system(&matrix, vector, workspace)) {
-    printf("Cannot solve D R x = y part\n");
-    return_code = -12;
-    goto cleanup;
-  }
-
-  if (matrix_size < 15) {
-    printf("cholesky decomposition:\n");
-    printf_matrix(&matrix);
-
-    printf("\ndiagonal:\n");
-    for (i = 0; i < matrix_size; i++) printf("%.1f ", matrix.diagonal[i]);
-    printf("\n\n");
-  }
-
-  print_time("on algorithm");
-
-  residual = 0;
-  rhs_norm = 0;
-  answer_error = 0;
-
-  if (argc == 3) {
-    if (fill_matrix(&matrix, vector, rhs)) {
-      printf("Cannot fill matrix\n");
-      return_code = -3;
-      goto cleanup;
+  /* 3. Result Reporting */
+  if (return_code == 0) {
+    printf("Answer:\n");
+    for (int i = 0; i < results.solution_sample_size; ++i) {
+      printf("%.10lf ", results.solution_sample[i]);
     }
+    printf("\n\n");
+
+    printf("Error: %11.5le ; Residual: %11.5le (%11.5le)\n", results.answer_error, results.residual,
+           results.residual / results.rhs_norm);
+  } else {
+    printf("Solver failed with error code: %d\n", return_code);
   }
 
-  if (argc == 4) {
-    if (read_matrix(&matrix, vector, rhs, argv[3])) {
-      printf("Cannot read matrix\n");
-      return_code = -4;
-      goto cleanup;
-    }
-  }
-
-  for (i = 0; i < matrix_size; ++i) {
-    residual += (exact_rhs[i] - rhs[i]) * (exact_rhs[i] - rhs[i]);
-    rhs_norm += exact_rhs[i] * exact_rhs[i];
-    answer_error += (vector_answer[i] - vector[i]) * (vector_answer[i] - vector[i]);
-  }
-
-  residual = sqrt(residual);
-  rhs_norm = sqrt(rhs_norm);
-  answer_error = sqrt(answer_error);
-
-  printf("Answer:\n");
-  for (i = 0; i < matrix_size && i < 5; ++i) printf("%.10lf ", vector[i]);
-  printf("\n\n");
-
-  printf("Error: %11.5le ; Residual: %11.5le (%11.5le)\n", answer_error, residual,
-         residual / rhs_norm);
-
-cleanup:
-  if (matrix.data) free(matrix.data);
-  if (matrix.diagonal) free(matrix.diagonal);
-  if (vector_answer) free(vector_answer);
-  if (vector) free(vector);
-  if (exact_rhs) free(exact_rhs);
-  if (rhs) free(rhs);
-  if (workspace) free(workspace);
+  /* 4. Final Cleanup */
+  if (results.solution_sample) free(results.solution_sample);
 
   return return_code;
 }
