@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Cholesky Solver Logo" width="400">
+  <img src="assets/banner.png" alt="Cholesky Solver Banner" width="600">
 </p>
 
 # Cholesky Solver
