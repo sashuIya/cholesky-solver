@@ -28,15 +28,6 @@ int fill_matrix(CholeskyMatrix* matrix, const double* vector_answer, double* rhs
   return 0;
 }
 
-int stupid_fill_matrix(int n, double* matrix) {
-  int i, j;
-
-  for (i = 0; i < n; ++i)
-    for (j = 0; j < n; ++j) matrix[i * n + j] = 1.0 / (i + j + 1.0);
-
-  return 0;
-}
-
 int read_matrix(CholeskyMatrix* matrix, const double* vector_answer, double* rhs,
                 const char* input_file_name) {
   int i, j;
@@ -83,30 +74,6 @@ int read_matrix(CholeskyMatrix* matrix, const double* vector_answer, double* rhs
   return 0;
 }
 
-int stupid_read_matrix(int matrix_size, double** p_a, const char* input_file_name) {
-  int i, j;
-  FILE* input_file;
-  double* matrix;
-  matrix = (*p_a);
-
-  input_file = fopen(input_file_name, "r");
-  if (input_file == NULL) {
-    printf("Error: cannot open input file\n");
-    return -1;
-  }
-
-  for (i = 0; i < matrix_size; i++) {
-    for (j = 0; j < matrix_size; j++)
-      if (fscanf(input_file, "%lf", matrix + i * matrix_size + j) != 1) {
-        printf("Cannot read matrix\n");
-        return -3;
-      }
-  }
-
-  fclose(input_file);
-  return 0;
-}
-
 void printf_matrix(const CholeskyMatrix* matrix) {
   int i, j;
   int n = matrix->size;
@@ -116,15 +83,6 @@ void printf_matrix(const CholeskyMatrix* matrix) {
         printf("%4.3lf ", matrix->data[get_symmetric_index(i, j, n)]);
       else
         printf("%4.3lf ", matrix->data[get_symmetric_index(j, i, n)]);
-
-    printf("\n");
-  }
-}
-
-void stupid_printf_matrix(int n, const double* matrix) {
-  int i, j;
-  for (i = 0; i < n; i++) {
-    for (j = 0; j < n; j++) printf("%.3lf ", matrix[n * i + j]);
 
     printf("\n");
   }
