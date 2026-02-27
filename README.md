@@ -10,6 +10,25 @@ This program is a high-performance solver for symmetric linear systems ($Ax = b$
 
 > **Key Audit Finding (2026):** Empirical benchmarking confirmed that manual loop unrolling is critical for this implementation. Attempting to rely solely on modern compiler optimizations (GCC -O3) resulted in a ~40-50% performance degradation on large matrices ($N=5000$). The manual unrolling has been preserved and standardized.
 
+## Optimization Techniques
+
+To achieve high performance in a single-threaded environment, several specialized techniques are employed:
+
+### 1. Packed Symmetric Storage
+To reduce memory footprint by 50%, the solver only stores the upper triangular part of the symmetric matrix in a packed format. This improves spatial locality and reduces cache misses during large-scale computations.
+
+### 2. Cache-Friendly Memory Access
+The block-wise approach ensures that the "working set" of data fits within the L1/L2 CPU caches. By processing the matrix in $m \times m$ blocks, the algorithm minimizes the movement of data between main memory and the processor.
+
+### 3. Loop Unrolling (Factor of 8)
+Critical nested loops in the block multiplication kernels are manually unrolled. This technique:
+- Reduces the number of branch instructions.
+- Increases the number of independent operations available for the CPU's instruction-level parallelism (ILP).
+- Helps the compiler generate more efficient SIMD instructions.
+
+### 4. Specialized BLAS-like Kernels
+The solver uses dedicated internal kernels for operations like $C = C - A^T D B$. These kernels are tailored for the specific data layout of the packed symmetric matrix, avoiding the overhead of general-purpose linear algebra libraries.
+
 ## Mathematical Foundation
 
 The solver uses the $A = R^T D R$ decomposition, where:
@@ -33,11 +52,12 @@ Once $A = R^T D R$ is computed, the system $Ax = b$ is solved in two steps:
 2.  Solve $D R x = y$ for $x$ (Backward substitution).
 
 ## Recent Refactorings
--   **Standardized Style:** Codebase updated to Google C Style.
--   **Improved Memory Management:** Switched from a single large memory block to individual allocations with centralized cleanup.
+-   **Standardized Style:** Codebase updated to Google C Style with Google-style docstrings.
+-   **Architectural Split:** Core logic extracted into a reusable `Solver Engine` library.
+-   **Improved Memory Management:** Switched to individual allocations with centralized cleanup.
 -   **Centralized Indexing:** Symmetric matrix indexing is now handled by a dedicated utility function.
 -   **Robustness:** Added `strtol` for argument parsing and enhanced file I/O error checking.
--   **Automation:** Integrated a Python-based benchmark manager (`benchmarks/manager.py`) for performance regression testing.
+-   **Automation:** Integrated a Python-based benchmark manager (`benchmarks/manager.py`).
 
 ## Usage
 
