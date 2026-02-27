@@ -12,50 +12,55 @@ int main(int argc, char *argv[])
 {
     int matrix_size, block_size;
     int i;
-    int len;
+    int return_code = 0;
 
-    double *matrix;
-    double *diagonal;
-    double *vector_answer;
-    double *vector;
-    double *exact_rhs;
-    double *rhs;
-    double *workspace;
+    double *matrix = NULL;
+    double *diagonal = NULL;
+    double *vector_answer = NULL;
+    double *vector = NULL;
+    double *exact_rhs = NULL;
+    double *rhs = NULL;
+    double *workspace = NULL;
 
     double residual, rhs_norm, answer_error;
 
     timer_start();
 
-    /* input: ./a.out n m [file] */
+    /* input: ./cholesky_solver n m [file] */
     if (argc == 3 || argc == 4)
     {
         matrix_size = atoi(argv[1]);
         block_size = atoi(argv[2]);
 
-        if (matrix_size == 0 || block_size == 0 || block_size > matrix_size)
+        if (matrix_size <= 0 || block_size <= 0 || block_size > matrix_size)
         {
             printf("Wrong input\n");
             return -1;
         }
 
-        len = 0;
-        len = 3*block_size*block_size + ((matrix_size*(matrix_size+1))/2) + 5*matrix_size;
-        len *= sizeof(double);
+        /* Individual allocations for better safety and readability */
+        matrix = (double*)malloc(((size_t)matrix_size * (matrix_size + 1) / 2) * sizeof(double));
+        diagonal = (double*)malloc(matrix_size * sizeof(double));
+        vector_answer = (double*)malloc(matrix_size * sizeof(double));
+        vector = (double*)malloc(matrix_size * sizeof(double));
+        exact_rhs = (double*)malloc(matrix_size * sizeof(double));
+        rhs = (double*)malloc(matrix_size * sizeof(double));
+        workspace = (double*)malloc(3 * (size_t)block_size * block_size * sizeof(double));
 
-        if (!(matrix = (double*)malloc(len))) // note to delete "2 * " !!!
+        if (!matrix || !diagonal || !vector_answer || !vector || !exact_rhs || !rhs || !workspace)
         {
             printf("Not enough memory\n");
-            return -2;
+            return_code = -2;
+            goto cleanup;
         }
 
-        memset(matrix, 0, len);
-
-        diagonal = matrix + ((matrix_size*(matrix_size+1))/2); // note to delete 2x !!!
-        vector_answer = diagonal + matrix_size;
-        vector = vector_answer + matrix_size;
-        exact_rhs = vector + matrix_size;
-        rhs = exact_rhs + matrix_size;
-        workspace = rhs + matrix_size;
+        memset(matrix, 0, ((size_t)matrix_size * (matrix_size + 1) / 2) * sizeof(double));
+        memset(diagonal, 0, matrix_size * sizeof(double));
+        memset(vector_answer, 0, matrix_size * sizeof(double));
+        memset(vector, 0, matrix_size * sizeof(double));
+        memset(exact_rhs, 0, matrix_size * sizeof(double));
+        memset(rhs, 0, matrix_size * sizeof(double));
+        memset(workspace, 0, 3 * (size_t)block_size * block_size * sizeof(double));
 
         fill_vector_answer(matrix_size, vector_answer);
 
@@ -64,7 +69,8 @@ int main(int argc, char *argv[])
             if (fill_matrix(matrix_size, matrix, vector_answer, rhs))
             {
                 printf("Cannot fill matrix\n");
-                return -3;
+                return_code = -3;
+                goto cleanup;
             }
         }
 
@@ -73,7 +79,8 @@ int main(int argc, char *argv[])
             if (read_matrix(matrix_size, &matrix, vector_answer, rhs, argv[3])) 
             {
                 printf("Cannot read matrix\n");
-                return -4;
+                return_code = -4;
+                goto cleanup;
             }
         }
 
@@ -91,19 +98,6 @@ int main(int argc, char *argv[])
 
     print_time("on initialization");
 
-    /*
-    if (matrix_size < 10)
-    {
-        printf("matrix:\n");
-        printf_matrix(matrix_size, matrix);
-
-        printf("\n");
-        int i;
-        for (i = 0; i < matrix_size; ++i)
-            printf("%.3f ", c[i]);
-        printf("\n\n");
-    }
-    */
     if (matrix_size < 15)
     {
         printf("matrix A:\n");
@@ -118,9 +112,8 @@ int main(int argc, char *argv[])
     if (cholesky(matrix_size, matrix, diagonal, workspace, block_size))
     {
         printf("Cannot apply Cholesky method for this matrix\n");
-        free(matrix);
-
-        return -10;
+        return_code = -10;
+        goto cleanup;
     }
 
     print_time("on cholesky decomposition");
@@ -128,17 +121,15 @@ int main(int argc, char *argv[])
     if (solve_lower_triangle_matrix_system(matrix_size, matrix, vector, workspace, block_size))
     {
         printf("Cannot solve R^T y = b part\n");
-        free(matrix);
-
-        return -11;
+        return_code = -11;
+        goto cleanup;
     }
 
     if (solve_upper_triangle_matrix_diagonal_system(matrix_size, matrix, diagonal, vector, workspace, block_size))
     {
         printf("Cannot solve D R x = y part\n");
-        free(matrix);
-
-        return -12;
+        return_code = -12;
+        goto cleanup;
     }
         
     if (matrix_size < 15)
@@ -163,7 +154,8 @@ int main(int argc, char *argv[])
         if (fill_matrix(matrix_size, matrix, vector, rhs))
         {
             printf("Cannot fill matrix\n");
-            return -3;
+            return_code = -3;
+            goto cleanup;
         }
     }
 
@@ -172,7 +164,8 @@ int main(int argc, char *argv[])
         if (read_matrix(matrix_size, &matrix, vector, rhs, argv[3])) 
         {
             printf("Cannot read matrix\n");
-            return -4;
+            return_code = -4;
+            goto cleanup;
         }
     }
 
@@ -196,9 +189,14 @@ int main(int argc, char *argv[])
 
     printf("Error: %11.5le ; Residual: %11.5le (%11.5le)\n", answer_error, residual, residual / rhs_norm);
 
-    free(matrix);
+cleanup:
+    if (matrix) free(matrix);
+    if (diagonal) free(diagonal);
+    if (vector_answer) free(vector_answer);
+    if (vector) free(vector);
+    if (exact_rhs) free(exact_rhs);
+    if (rhs) free(rhs);
+    if (workspace) free(workspace);
 
-    return 0;
+    return return_code;
 }
-
-
