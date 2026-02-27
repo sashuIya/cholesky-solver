@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Cholesky Solver Logo" width="400">
+</p>
+
 # Cholesky Solver
 
 ## Overview
