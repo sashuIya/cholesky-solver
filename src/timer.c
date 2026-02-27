@@ -55,8 +55,12 @@ void print_time(const char* message) {
 }
 
 /* Maintain legacy API for compatibility */
-void print_full_time(const char* message) { print_time(message); }
-void TimerStart(void) { timer_start(); }
+void print_full_time(const char* message) {
+  print_time(message);
+}
+void TimerStart(void) {
+  timer_start();
+}
 long TimerGet(void) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);

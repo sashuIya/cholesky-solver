@@ -137,7 +137,7 @@ static void cpy_block_to_diagonal_block(double* a, int t, int matrix_size, int m
 static int inverse_upper_triangle_block_and_diagonal(int n, const double* a, const double* d,
                                                      double* b) {
   int i, j, k;
-  double *pbi;
+  double* pbi;
 
   memset(b, 0, (size_t)n * n * sizeof(double));
   for (i = 0; i < n; ++i) b[i * n + i] = d[i];
@@ -170,7 +170,7 @@ static int inverse_upper_triangle_block_and_diagonal(int n, const double* a, con
 // Performs standard Cholesky decomposition on a small dense block.
 static int cholesky_for_block(int n, double* a, double* d) {
   int i, j, k;
-  double *pai;
+  double* pai;
 
   for (i = 0; i < n; ++i) d[i] = 1.0;
 
@@ -217,7 +217,7 @@ static int cholesky_for_block(int n, double* a, double* d) {
 }
 
 static int inverse_upper_triangle_block_and_diagonal_rhs(int n, const double* a, const double* d,
-                                                        double* rhs) {
+                                                         double* rhs) {
   int i, j;
 
   for (i = 0; i < n; ++i) rhs[i] *= d[i];
@@ -251,7 +251,8 @@ static int inverse_lower_triangle_block_rhs(int n, const double* a, double* rhs)
   return 0;
 }
 
-static void matrix_block_vector_multiply(int n, int m, const double* a, const double* b, double* c) {
+static void matrix_block_vector_multiply(int n, int m, const double* a, const double* b,
+                                         double* c) {
   int i, j;
   const double* pai;
 
@@ -266,7 +267,7 @@ static void matrix_block_vector_multiply(int n, int m, const double* a, const do
 }
 
 static void matrix_block_transposed_vector_multiply(int n, int m, const double* a, const double* b,
-                                                   double* c) {
+                                                    double* c) {
   int i, j;
 
   for (i = 0; i < m; i++) {

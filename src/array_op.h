@@ -22,7 +22,8 @@ int cholesky(CholeskyMatrix* matrix, double* workspace);
 //
 // Returns:
 //   0 on success, non-zero on error.
-int solve_lower_triangle_matrix_system(const CholeskyMatrix* matrix, double* rhs, double* workspace);
+int solve_lower_triangle_matrix_system(const CholeskyMatrix* matrix, double* rhs,
+                                       double* workspace);
 
 // Solves the system D R x = y using backward substitution.
 //
